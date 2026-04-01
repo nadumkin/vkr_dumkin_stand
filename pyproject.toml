@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hybrid-search-prototype"
+version = "0.1.0"
+description = "Prototype of a hybrid semantic search system with adaptive binary hashing."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=2.0",
+  "torch>=2.7",
+  "transformers>=4.0",
+  "hnswlib>=0.8",
+  "datasets>=2.0",
+]
+
+[project.optional-dependencies]
+mlflow = [
+  "mlflow>=2.17",
+]
+
+[project.scripts]
+hybrid-search = "hybrid_search.cli:main"
+hybrid-search-experiment = "hybrid_search.experiments.experiment_runner:main"
+
+[tool.setuptools.packages.find]
+include = ["hybrid_search*"]
