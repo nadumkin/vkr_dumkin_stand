@@ -168,13 +168,28 @@ class DatasetPreparer:
                 snli = load_dataset("snli", cache_dir=cache_arg)
                 mnli = load_dataset("multi_nli", cache_dir=cache_arg)
                 loaded[dataset_key] = {
-                    "train": _take_limit(concatenate_datasets([snli["train"], mnli["train"]]), limit_train_rows),
+                    "train": _take_limit(
+                        self._concatenate_available_splits(
+                            concatenate_datasets,
+                            (snli, mnli),
+                            ("train",),
+                        ),
+                        limit_train_rows,
+                    ),
                     "validation": _take_limit(
-                        concatenate_datasets([snli["validation"], mnli["validation_matched"], mnli["validation_mismatched"]]),
+                        self._concatenate_available_splits(
+                            concatenate_datasets,
+                            (snli, mnli),
+                            ("validation", "validation_matched", "validation_mismatched"),
+                        ),
                         limit_eval_rows,
                     ),
                     "test": _take_limit(
-                        concatenate_datasets([snli["test"], mnli["test_matched"], mnli["test_mismatched"]]),
+                        self._concatenate_available_splits(
+                            concatenate_datasets,
+                            (snli, mnli),
+                            ("test", "test_matched", "test_mismatched"),
+                        ),
                         limit_eval_rows,
                     ),
                 }
@@ -195,6 +210,23 @@ class DatasetPreparer:
             else:
                 raise ValueError(f"Unsupported dataset name: {dataset_name}")
         return loaded
+
+    def _concatenate_available_splits(
+        self,
+        concatenate_datasets: Any,
+        dataset_dicts: Sequence[Mapping[str, Sequence[dict]]],
+        split_names: Sequence[str],
+    ) -> Sequence[dict]:
+        available_parts: list[Sequence[dict]] = []
+        for dataset_dict in dataset_dicts:
+            for split_name in split_names:
+                if split_name in dataset_dict:
+                    available_parts.append(dataset_dict[split_name])
+        if not available_parts:
+            return []
+        if len(available_parts) == 1:
+            return available_parts[0]
+        return concatenate_datasets(list(available_parts))
 
     def _normalize_text(self, text: Any) -> str:
         return self.preprocessor.normalize("" if text is None else str(text))

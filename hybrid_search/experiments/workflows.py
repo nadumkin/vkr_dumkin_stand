@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -63,6 +63,10 @@ class IndexArtifacts:
     index_backend_active: str
     encoder_config: EncoderConfig
     index_config: IndexConfig
+    encode_time_ms: float = 0.0
+    hashing_time_ms: float = 0.0
+    build_time_ms: float = 0.0
+    memory: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -72,6 +76,10 @@ class IndexArtifacts:
             "index_backend_active": self.index_backend_active,
             "encoder_config": asdict(self.encoder_config),
             "index_config": asdict(self.index_config),
+            "encode_time_ms": float(self.encode_time_ms),
+            "hashing_time_ms": float(self.hashing_time_ms),
+            "build_time_ms": float(self.build_time_ms),
+            "memory": dict(self.memory),
         }
 
 
@@ -161,6 +169,10 @@ def build_index_from_corpus(
         index_backend_active=index.backend,
         encoder_config=resolved_encoder_config,
         index_config=index_config,
+        encode_time_ms=pipeline.last_encode_time_ms,
+        hashing_time_ms=pipeline.last_hashing_time_ms,
+        build_time_ms=index.last_build_time_ms,
+        memory=index.memory_breakdown(),
     )
 
 

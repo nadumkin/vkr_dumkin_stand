@@ -7,6 +7,25 @@ from hybrid_search.io.data import load_jsonl
 
 
 class DatasetPreparationTest(unittest.TestCase):
+    def test_concatenate_available_splits_skips_missing_parts(self) -> None:
+        preparer = DatasetPreparer(seed=11, holdout_fraction=0.5)
+
+        def fake_concatenate(parts):
+            output = []
+            for part in parts:
+                output.extend(part)
+            return output
+
+        merged = preparer._concatenate_available_splits(
+            fake_concatenate,
+            (
+                {"validation": [{"id": "snli-val"}], "test": [{"id": "snli-test"}]},
+                {"validation_matched": [{"id": "mnli-val-m"}], "validation_mismatched": [{"id": "mnli-val-mm"}]},
+            ),
+            ("test", "test_matched", "test_mismatched"),
+        )
+        self.assertEqual(merged, [{"id": "snli-test"}])
+
     def test_prepare_from_splits_builds_expected_files(self) -> None:
         preparer = DatasetPreparer(seed=11, holdout_fraction=0.5)
         splits = {

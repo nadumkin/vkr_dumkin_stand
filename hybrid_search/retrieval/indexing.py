@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Sequence
 
@@ -32,6 +33,8 @@ class BinaryCodeIndex:
         self.dense_embeddings = np.empty((0, 0), dtype=np.float32)
         self.records: list[TextRecord] = []
         self._hnsw_index = None
+        # Время последней операции построения индекса (только сам индекс, без кодирования).
+        self.last_build_time_ms: float = 0.0
 
     def __len__(self) -> int:
         return len(self.records)
@@ -88,7 +91,10 @@ class BinaryCodeIndex:
             self.packed_codes = np.vstack([self.packed_codes, packed])
             self.dense_embeddings = np.vstack([self.dense_embeddings, normalized_dense])
         self.records.extend(records)
+
+        build_started = time.perf_counter()
         self._rebuild_hnsw_index()
+        self.last_build_time_ms = (time.perf_counter() - build_started) * 1000.0
 
     def hamming_distances(self, query_code: np.ndarray) -> np.ndarray:
         packed_query = pack_binary_codes(query_code.reshape(1, -1))[0]
@@ -105,21 +111,73 @@ class BinaryCodeIndex:
         query_code: np.ndarray,
         top_n: int,
     ) -> tuple[np.ndarray, np.ndarray]:
-        distances = self.hamming_distances(query_code)
-        if len(distances) == 0:
-            return np.array([], dtype=np.int64), distances
-        top_n = min(top_n, len(distances))
+        """Return top-N candidate indices and their Hamming distances (aligned by position).
+
+        The returned distances are aligned with ``candidate_indices`` (i.e. the i-th
+        distance corresponds to the i-th candidate), not indexed by global document id.
+        """
+        if len(self.records) == 0:
+            return np.array([], dtype=np.int64), np.array([], dtype=np.int32)
+        top_n = min(top_n, len(self.records))
+
         if self.backend == "hnswlib" and self._hnsw_index is not None:
+            # HNSW with L2 space over {0,1} float vectors — squared L2 equals Hamming.
             query_vector = self._binary_codes_to_bit_vectors(query_code.reshape(1, -1))
-            labels, _ = self._hnsw_index.knn_query(query_vector, k=top_n)
-            ranking = labels[0]
-            ranking = ranking[ranking >= 0]
-            if len(ranking) > 0:
-                ranking = ranking[np.argsort(distances[ranking], kind="stable")]
-                return ranking.astype(np.int64), distances
+            current_ef = max(self.hnsw_ef_search, top_n)
+            self._hnsw_index.set_ef(current_ef)
+            labels, hnsw_distances = self._hnsw_index.knn_query(query_vector, k=top_n)
+            labels = labels[0]
+            hnsw_distances = hnsw_distances[0]
+            valid_mask = labels >= 0
+            labels = labels[valid_mask]
+            hnsw_distances = hnsw_distances[valid_mask]
+            if len(labels) == 0:
+                return np.array([], dtype=np.int64), np.array([], dtype=np.int32)
+            # hnswlib already returns labels sorted ascending by distance; squared L2
+            # of {0,1} vectors equals Hamming distance, so we cast to int and trust it.
+            return labels.astype(np.int64, copy=False), hnsw_distances.astype(np.int32, copy=False)
+
+        distances = self.hamming_distances(query_code)
         partition = np.argpartition(distances, top_n - 1)[:top_n]
         ranking = partition[np.argsort(distances[partition], kind="stable")]
-        return ranking.astype(np.int64), distances
+        return ranking.astype(np.int64), distances[ranking].astype(np.int32, copy=False)
+
+    def memory_breakdown(self) -> dict:
+        """Оценка занимаемой памяти основных структур индекса в байтах.
+
+        Размер графа HNSW оценивается аналитически по формуле hnswlib
+        ``per_element ≈ M_max0 * 2 * sizeof(uint32) + sizeof(label_t) + bit_vector``,
+        что соответствует памяти на хранение нижнего уровня графа и метаданных.
+        Это нижняя оценка: вышестоящие уровни занимают доли процента и в формулу
+        не включены. Для backend ``numpy`` поле ``hnsw_graph_bytes`` равно нулю.
+        """
+        n = len(self.records)
+        dense_bytes = int(self.dense_embeddings.nbytes)
+        packed_bytes = int(self.packed_codes.nbytes)
+        records_text_bytes = sum(
+            len(record.text.encode("utf-8")) + len(str(record.metadata).encode("utf-8"))
+            for record in self.records
+        )
+        if self.backend == "hnswlib" and n > 0:
+            # M_max0 = 2*M (число рёбер на уровне 0 в hnswlib).
+            edges_per_node = max(1, 2 * self.hnsw_m)
+            graph_bytes = n * (edges_per_node * 4 + 4)  # uint32 per neighbour + label
+            # Плюс хранение векторов внутри hnswlib (float32 на бит).
+            vector_bytes = n * self.code_bits * 4
+            hnsw_bytes = graph_bytes + vector_bytes
+        else:
+            hnsw_bytes = 0
+        total_bytes = dense_bytes + packed_bytes + records_text_bytes + hnsw_bytes
+        return {
+            "documents": n,
+            "code_bits": self.code_bits,
+            "dense_embeddings_bytes": dense_bytes,
+            "packed_codes_bytes": packed_bytes,
+            "records_text_bytes": int(records_text_bytes),
+            "hnsw_graph_bytes": hnsw_bytes,
+            "total_bytes": int(total_bytes),
+            "bytes_per_doc": int(total_bytes / n) if n > 0 else 0,
+        }
 
     def save(self, directory: str | Path) -> None:
         target = ensure_directory(directory)

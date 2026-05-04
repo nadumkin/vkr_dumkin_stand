@@ -103,26 +103,70 @@ class TransformerSentenceEncoder:
         counts = mask.sum(dim=1).clamp_min(1e-9)
         return summed / counts
 
+    def set_trainable(self, trainable: bool) -> None:
+        """Включает/выключает градиенты для энкодера. Для inference выключено по умолчанию."""
+        self.model.train(trainable)
+        for param in self.model.parameters():
+            param.requires_grad_(trainable)
+
     @torch.no_grad()
     def encode(self, texts: Sequence[str]) -> np.ndarray:
+        """Inference-only кодирование: без градиентов, возвращает numpy."""
+        was_training = self.model.training
+        self.model.eval()
+        try:
+            normalized = self.preprocessor.normalize_batch(texts)
+            batches = []
+            for batch in batched(normalized, self._config.batch_size):
+                encoded = self.tokenizer(
+                    batch,
+                    padding=True,
+                    truncation=True,
+                    max_length=self.preprocessor.config.max_length,
+                    return_tensors="pt",
+                )
+                encoded = {key: value.to(self.device) for key, value in encoded.items()}
+                outputs = self.model(**encoded)
+                pooled = self._mean_pool(outputs.last_hidden_state, encoded["attention_mask"])
+                vector_batch = pooled.detach().cpu().numpy().astype(np.float32)
+                if self._config.normalize_embeddings:
+                    vector_batch = l2_normalize(vector_batch)
+                batches.append(vector_batch)
+            return np.vstack(batches)
+        finally:
+            self.model.train(was_training)
+
+    def encode_torch(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        *,
+        normalize: bool | None = None,
+    ) -> torch.Tensor:
+        """Forward с сохранением градиентов: ожидает уже токенизированные тензоры.
+
+        Используется в цикле совместного обучения (joint training), где
+        токенизация выполняется заранее (для эффективности при HPC-нагрузках).
+        Возвращает torch-тензор формы (batch, hidden_size), готовый к подаче
+        в хэширующую голову.
+        """
+        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
+        pooled = self._mean_pool(outputs.last_hidden_state, attention_mask)
+        if (self._config.normalize_embeddings if normalize is None else normalize):
+            pooled = torch.nn.functional.normalize(pooled, p=2, dim=-1, eps=1e-6)
+        return pooled
+
+    def tokenize(self, texts: Sequence[str], *, max_length: int | None = None) -> dict[str, torch.Tensor]:
+        """Утилита для пред-токенизации списка текстов с возвратом плотных тензоров."""
         normalized = self.preprocessor.normalize_batch(texts)
-        batches = []
-        for batch in batched(normalized, self._config.batch_size):
-            encoded = self.tokenizer(
-                batch,
-                padding=True,
-                truncation=True,
-                max_length=self.preprocessor.config.max_length,
-                return_tensors="pt",
-            )
-            encoded = {key: value.to(self.device) for key, value in encoded.items()}
-            outputs = self.model(**encoded)
-            pooled = self._mean_pool(outputs.last_hidden_state, encoded["attention_mask"])
-            vector_batch = pooled.detach().cpu().numpy().astype(np.float32)
-            if self._config.normalize_embeddings:
-                vector_batch = l2_normalize(vector_batch)
-            batches.append(vector_batch)
-        return np.vstack(batches)
+        encoded = self.tokenizer(
+            normalized,
+            padding="max_length",
+            truncation=True,
+            max_length=max_length or self.preprocessor.config.max_length,
+            return_tensors="pt",
+        )
+        return {"input_ids": encoded["input_ids"], "attention_mask": encoded["attention_mask"]}
 
 
 def build_encoder(
