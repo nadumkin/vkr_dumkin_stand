@@ -155,7 +155,7 @@ CMD=(
     --max-seq-length "$MAX_SEQ_LENGTH"
     --log-every-n-steps 50
 )
-CMD+=("${EXTRA_FLAGS[@]}")
+CMD+=(${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"})
 
 echo "[CMD] ${CMD[*]}" | tee -a "$LOG_FILE"
 echo "------------------------------------------------------------------" | tee -a "$LOG_FILE"

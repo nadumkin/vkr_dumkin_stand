@@ -119,4 +119,11 @@ class SearchEvaluator:
                 "candidate_selection_ms": sum(m.candidate_selection_ms for m in metrics) / n,
                 "rerank_ms": sum(m.rerank_ms for m in metrics) / n,
             },
+            # Per-query метрики для bootstrap CI и других статистических процедур.
+            # Длина каждого массива == n; порядок соответствует порядку query_rows.
+            "per_query": {
+                "recall@k": [m.recall for m in metrics],
+                "map@k": [m.map_k for m in metrics],
+                "ndcg@k": [m.ndcg for m in metrics],
+            },
         }

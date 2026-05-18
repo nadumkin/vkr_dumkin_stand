@@ -52,6 +52,9 @@ class JointTrainingConfig:
     margin: float = 4.0
     quantization_weight: float = 0.1
     temperature: float = 1.0
+    # Если задан — линейный отжиг α в tanh(α·z) от ``temperature`` до этого
+    # значения за всё время обучения (HashNet-style).
+    temperature_end: float | None = None
     gradient_clip_norm: float = 1.0
     max_seq_length: int = 128
     mixed_precision: bool = False
@@ -74,6 +77,11 @@ class TextTripletDataset(Dataset):
 
     На входе ожидает список ``SimilarityExample``; токенизация выполняется
     в конструкторе один раз. Это в разы быстрее токенизации в DataLoader.
+
+    Опциональный аргумент ``teacher_embeddings`` позволяет приложить к датасету
+    заранее посчитанные dense-эмбеддинги от «учителя» (frozen pretrained
+    энкодер). Они возвращаются вместе с токенами и используются в режиме
+    knowledge-distillation как фиксированный target supervisory signal.
     """
 
     def __init__(
@@ -81,6 +89,7 @@ class TextTripletDataset(Dataset):
         examples: Sequence[SimilarityExample],
         encoder: TransformerSentenceEncoder,
         max_length: int = 128,
+        teacher_embeddings: tuple | None = None,
     ) -> None:
         queries: list[str] = []
         positives: list[str] = []
@@ -96,11 +105,23 @@ class TextTripletDataset(Dataset):
         self._n = encoder.tokenize(negatives, max_length=max_length)
         self._n_examples = len(queries)
 
+        self._teacher_q: torch.Tensor | None = None
+        self._teacher_p: torch.Tensor | None = None
+        self._teacher_n: torch.Tensor | None = None
+        if teacher_embeddings is not None:
+            t_q, t_p, t_n = teacher_embeddings
+            if not (len(t_q) == len(t_p) == len(t_n) == self._n_examples):
+                raise ValueError("teacher_embeddings sizes must match number of triplets")
+            import numpy as np
+            self._teacher_q = torch.from_numpy(np.asarray(t_q, dtype=np.float32))
+            self._teacher_p = torch.from_numpy(np.asarray(t_p, dtype=np.float32))
+            self._teacher_n = torch.from_numpy(np.asarray(t_n, dtype=np.float32))
+
     def __len__(self) -> int:
         return self._n_examples
 
     def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
-        return {
+        item = {
             "q_input_ids": self._q["input_ids"][index],
             "q_attention_mask": self._q["attention_mask"][index],
             "p_input_ids": self._p["input_ids"][index],
@@ -108,6 +129,11 @@ class TextTripletDataset(Dataset):
             "n_input_ids": self._n["input_ids"][index],
             "n_attention_mask": self._n["attention_mask"][index],
         }
+        if self._teacher_q is not None:
+            item["q_teacher"] = self._teacher_q[index]
+            item["p_teacher"] = self._teacher_p[index]
+            item["n_teacher"] = self._teacher_n[index]
+        return item
 
 
 # ---------------------------------------------------------------------------
@@ -321,5 +347,250 @@ class JointTrainer:
             "embedding_dim": self.encoder.embedding_dim,
             "hash_config": self.hash_model.config.to_dict(),
             "training_config": self.config.to_dict(),
+        }
+        (path / "meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# JointDistillationTrainer (teacher-student)
+# ---------------------------------------------------------------------------
+class JointDistillationTrainer:
+    """Совместное обучение энкодера и хэша через teacher-student distillation.
+
+    Архитектура:
+        - **Teacher**: исходный pretrained энкодер. Его эмбеддинги триплетов
+          посчитаны один раз перед обучением и хранятся в датасете как
+          фиксированный target. Учитель сам по себе в обучении не участвует.
+        - **Student**: копия того же энкодера (`self.encoder`), обучаемая.
+        - **Hash**: маленькая MLP-голова на выходе ученика.
+
+    Loss:
+        ``MSE(binary_cos_student, dense_cos_teacher)`` на off-diagonal записях
+        in-batch матрицы 3B × 3B. Плюс штраф квантизации на релаксированном
+        выходе хэш-головы.
+
+    Преимущества над простой joint+triplet схемой:
+        - Учитель не двигается, поэтому ученик не может «уплыть» в произвольную
+          сторону: distill loss всегда тянет к pretrained-геометрии.
+        - Каждая пара в батче — это плотный supervisory signal (3B² пар), а не
+          одно triplet-неравенство.
+        - Хэш-голова получает чёткую цель: воспроизвести target-cosine.
+
+    Преимущества над hash-only distillation:
+        - Энкодер мягко смещается, чтобы его представления были «binary-friendly»,
+          а не оптимальны для float-cosine. Это подняло hybrid_untrained с 0.747
+          до 0.776 в наших экспериментах с triplet-joint.
+    """
+
+    def __init__(
+        self,
+        encoder: TransformerSentenceEncoder,
+        hash_model: HashingMLP,
+        config: JointTrainingConfig,
+        device: str | torch.device,
+        distillation_weight: float = 1.0,
+    ) -> None:
+        self.encoder = encoder
+        self.hash_model = hash_model
+        self.config = config
+        self.device = torch.device(device)
+        self.distillation_weight = float(distillation_weight)
+        self.encoder.set_trainable(True)
+        self.hash_model.to(self.device)
+        self.hash_model.train()
+
+    @staticmethod
+    def _quantization_loss(relaxed: torch.Tensor) -> torch.Tensor:
+        return (1.0 - relaxed.abs()).pow(2).mean()
+
+    def _build_optimizer(self) -> torch.optim.Optimizer:
+        encoder_params = [p for p in self.encoder.model.parameters() if p.requires_grad]
+        hash_params = [p for p in self.hash_model.parameters() if p.requires_grad]
+        return torch.optim.AdamW(
+            [
+                {"params": encoder_params, "lr": self.config.encoder_lr, "name": "encoder"},
+                {"params": hash_params, "lr": self.config.hash_lr, "name": "hash"},
+            ],
+            weight_decay=self.config.weight_decay,
+        )
+
+    def fit(
+        self,
+        dataset: TextTripletDataset,
+        *,
+        eval_callback=None,
+        checkpoint_dir: Path | None = None,
+    ) -> JointTrainingHistory:
+        if dataset._teacher_q is None:
+            raise ValueError(
+                "JointDistillationTrainer requires TextTripletDataset built with "
+                "teacher_embeddings=(q,p,n). Use teacher.encode(...) before constructing."
+            )
+        torch.manual_seed(self.config.seed)
+        loader = DataLoader(
+            dataset,
+            batch_size=self.config.batch_size,
+            shuffle=True,
+            num_workers=self.config.num_workers,
+            pin_memory=self.config.pin_memory and self.device.type == "cuda",
+            drop_last=False,
+        )
+        total_steps = max(1, len(loader) * self.config.epochs)
+        warmup_steps = max(1, int(total_steps * self.config.warmup_ratio))
+
+        optimizer = self._build_optimizer()
+        scheduler = build_warmup_cosine_scheduler(
+            optimizer, total_steps=total_steps, warmup_steps=warmup_steps
+        )
+
+        amp_enabled = self.config.mixed_precision and self.device.type == "cuda"
+        scaler = torch.amp.GradScaler("cuda", enabled=amp_enabled)
+
+        # Подготовка к temperature annealing
+        alpha_start = float(self.config.temperature)
+        alpha_end = (
+            float(self.config.temperature_end)
+            if self.config.temperature_end is not None
+            else alpha_start
+        )
+
+        history = JointTrainingHistory()
+        global_step = 0
+        for epoch in range(1, self.config.epochs + 1):
+            epoch_started = time.perf_counter()
+            self.encoder.set_trainable(True)
+            self.hash_model.train()
+            running = {"loss": 0.0, "distill": 0.0, "quant": 0.0, "batches": 0}
+            last_alpha = alpha_start
+
+            for batch in loader:
+                global_step += 1
+                # Линейное расписание α в tanh(α·z) от alpha_start до alpha_end
+                progress = (global_step - 1) / max(total_steps - 1, 1)
+                alpha = alpha_start + (alpha_end - alpha_start) * progress
+                last_alpha = alpha
+
+                batch = {k: v.to(self.device, non_blocking=True) for k, v in batch.items()}
+                optimizer.zero_grad(set_to_none=True)
+
+                with torch.amp.autocast(device_type="cuda", enabled=amp_enabled):
+                    # Student forward (с градиентами)
+                    h_q = self.encoder.encode_torch(batch["q_input_ids"], batch["q_attention_mask"])
+                    h_p = self.encoder.encode_torch(batch["p_input_ids"], batch["p_attention_mask"])
+                    h_n = self.encoder.encode_torch(batch["n_input_ids"], batch["n_attention_mask"])
+                    h_student = torch.cat([h_q, h_p, h_n], dim=0)
+
+                    # Teacher embeddings (frozen, без градиентов)
+                    t_all = torch.cat(
+                        [batch["q_teacher"], batch["p_teacher"], batch["n_teacher"]], dim=0
+                    )
+                    t_all = torch.nn.functional.normalize(t_all, p=2, dim=-1, eps=1e-6)
+
+                    # Hash student с текущей температурой
+                    output = self.hash_model(h_student, temperature=alpha)
+                    relaxed = output.relaxed
+                    code_bits = int(relaxed.shape[-1])
+
+                    # Target и prediction подобий
+                    target_sim = (t_all @ t_all.T).detach()
+                    pred_sim = (relaxed @ relaxed.T) / float(code_bits)
+
+                    size = h_student.shape[0]
+                    eye = torch.eye(size, device=self.device, dtype=torch.bool)
+                    distill_loss = ((pred_sim - target_sim) ** 2).masked_select(~eye).mean()
+                    quant_loss = self._quantization_loss(relaxed)
+
+                    loss = (
+                        self.distillation_weight * distill_loss
+                        + self.config.quantization_weight * quant_loss
+                    )
+
+                if amp_enabled:
+                    scaler.scale(loss).backward()
+                    scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(
+                        list(self.encoder.model.parameters()) + list(self.hash_model.parameters()),
+                        self.config.gradient_clip_norm,
+                    )
+                    scaler.step(optimizer)
+                    scaler.update()
+                else:
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(
+                        list(self.encoder.model.parameters()) + list(self.hash_model.parameters()),
+                        self.config.gradient_clip_norm,
+                    )
+                    optimizer.step()
+                scheduler.step()
+
+                running["loss"] += float(loss.item())
+                running["distill"] += float(distill_loss.item())
+                running["quant"] += float(quant_loss.item())
+                running["batches"] += 1
+
+                if global_step % self.config.log_every_n_steps == 0:
+                    lr_groups = {g["name"]: g["lr"] for g in optimizer.param_groups}
+                    print(
+                        f"  step {global_step}/{total_steps}  loss={running['loss']/running['batches']:.4f}"
+                        f"  distill={running['distill']/running['batches']:.4f}"
+                        f"  quant={running['quant']/running['batches']:.4f}"
+                        f"  lr_enc={lr_groups.get('encoder', 0):.2e}  lr_hash={lr_groups.get('hash', 0):.2e}",
+                        flush=True,
+                    )
+
+            n = max(1, running["batches"])
+            epoch_summary = {
+                "epoch": epoch,
+                "loss": running["loss"] / n,
+                "distillation_loss": running["distill"] / n,
+                "quantization_loss": running["quant"] / n,
+                "alpha_end_of_epoch": last_alpha,
+                "elapsed_s": round(time.perf_counter() - epoch_started, 1),
+            }
+            history.epochs.append(epoch_summary)
+            alpha_part = f"  α_end={last_alpha:.2f}" if alpha_end != alpha_start else ""
+            print(
+                f"[epoch {epoch}/{self.config.epochs}] loss={epoch_summary['loss']:.4f}  "
+                f"distill={epoch_summary['distillation_loss']:.4f}  "
+                f"quant={epoch_summary['quantization_loss']:.4f}{alpha_part}  "
+                f"({epoch_summary['elapsed_s']}s)",
+                flush=True,
+            )
+
+            do_eval = eval_callback is not None and (
+                epoch % self.config.eval_every_n_epochs == 0 or epoch == self.config.epochs
+            )
+            if do_eval:
+                eval_metrics = eval_callback(epoch)
+                eval_metrics["epoch"] = epoch
+                history.eval.append(eval_metrics)
+
+            if checkpoint_dir is not None and (
+                epoch % self.config.save_every_n_epochs == 0 or epoch == self.config.epochs
+            ):
+                checkpoint_dir.mkdir(parents=True, exist_ok=True)
+                self.save_checkpoint(checkpoint_dir / f"checkpoint_epoch{epoch}", optimizer, scheduler)
+        return history
+
+    def save_checkpoint(
+        self,
+        path: Path,
+        optimizer: torch.optim.Optimizer | None = None,
+        scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
+    ) -> None:
+        path.mkdir(parents=True, exist_ok=True)
+        torch.save(self.encoder.model.state_dict(), path / "encoder.pt")
+        torch.save(self.hash_model.state_dict(), path / "hash_model.pt")
+        if optimizer is not None:
+            torch.save(optimizer.state_dict(), path / "optimizer.pt")
+        if scheduler is not None:
+            torch.save(scheduler.state_dict(), path / "scheduler.pt")
+        meta = {
+            "encoder_model_name": self.encoder.config.model_name,
+            "embedding_dim": self.encoder.embedding_dim,
+            "hash_config": self.hash_model.config.to_dict(),
+            "training_config": self.config.to_dict(),
+            "training_kind": "joint_distillation",
+            "distillation_weight": self.distillation_weight,
         }
         (path / "meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")

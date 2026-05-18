@@ -49,6 +49,10 @@ class TrainingConfig:
     quantization_weight: float = 0.1
     gradient_clip_norm: float = 1.0
     temperature: float = 1.0
+    # Если задан — линейное расписание α в tanh(α·logits) от ``temperature``
+    # до ``temperature_end`` за всё время обучения. Идея HashNet (Cao et al.,
+    # ICCV 2017): мягкий старт + резкий финиш.
+    temperature_end: float | None = None
     device: str = "cpu"
 
 
