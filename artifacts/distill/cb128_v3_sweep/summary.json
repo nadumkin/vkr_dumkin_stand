@@ -1,0 +1,116 @@
+{
+  "args": {
+    "data_dir": "data/real_300k",
+    "output_dir": "artifacts/distill/cb128_v3_sweep",
+    "device": null,
+    "seed": 17,
+    "transformer_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "code_bits": 128,
+    "hidden_dims": "768",
+    "activation": "gelu",
+    "dropout": 0.0,
+    "no_layer_norm": false,
+    "epochs": 8,
+    "batch_size": 128,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "quantization_weight": 0.01,
+    "distillation_weight": 1.0,
+    "temperature": 1.0,
+    "temperature_end": 10.0,
+    "itq_init": true,
+    "itq_iter": 50,
+    "gradient_clip_norm": 1.0,
+    "top_k": 10,
+    "oversample": 20,
+    "skip_baselines": true
+  },
+  "device": "mps",
+  "training": {
+    "config": {
+      "epochs": 8,
+      "batch_size": 128,
+      "learning_rate": 0.001,
+      "weight_decay": 0.0001,
+      "margin": 0.0,
+      "quantization_weight": 0.01,
+      "gradient_clip_norm": 1.0,
+      "temperature": 1.0,
+      "temperature_end": 10.0,
+      "device": "mps"
+    },
+    "history": [
+      {
+        "epoch": 1,
+        "loss": 0.0034950842646044723,
+        "distillation_loss": 0.0021415135972461426,
+        "quantization_loss": 0.13535706888404042,
+        "alpha_end_of_epoch": 2.1215686274509804
+      },
+      {
+        "epoch": 2,
+        "loss": 0.0031046693607554724,
+        "distillation_loss": 0.0020061845409291234,
+        "quantization_loss": 0.1098484839036905,
+        "alpha_end_of_epoch": 3.2470588235294118
+      },
+      {
+        "epoch": 3,
+        "loss": 0.0030381253430496525,
+        "distillation_loss": 0.0019754157977613525,
+        "quantization_loss": 0.1062709570761757,
+        "alpha_end_of_epoch": 4.372549019607844
+      },
+      {
+        "epoch": 4,
+        "loss": 0.002987968749188224,
+        "distillation_loss": 0.00193909605809257,
+        "quantization_loss": 0.10488727037188068,
+        "alpha_end_of_epoch": 5.4980392156862745
+      },
+      {
+        "epoch": 5,
+        "loss": 0.0029518518682880787,
+        "distillation_loss": 0.001909814129635458,
+        "quantization_loss": 0.10420377630389942,
+        "alpha_end_of_epoch": 6.623529411764705
+      },
+      {
+        "epoch": 6,
+        "loss": 0.0029271141851470134,
+        "distillation_loss": 0.001890431805627375,
+        "quantization_loss": 0.1036682401488467,
+        "alpha_end_of_epoch": 7.749019607843137
+      },
+      {
+        "epoch": 7,
+        "loss": 0.0028963442502433,
+        "distillation_loss": 0.001859132009834207,
+        "quantization_loss": 0.10372122626375238,
+        "alpha_end_of_epoch": 8.874509803921569
+      },
+      {
+        "epoch": 8,
+        "loss": 0.002880076173602081,
+        "distillation_loss": 0.001845919573760692,
+        "quantization_loss": 0.10341566206582332,
+        "alpha_end_of_epoch": 10.0
+      }
+    ],
+    "train_time_s": 13.2
+  },
+  "models": {
+    "hybrid_distilled": {
+      "queries": 1858,
+      "recall@k": 0.8344546106925009,
+      "map@k": 0.3399060476361338,
+      "ndcg@k": 0.46446355336490813,
+      "latency_ms": 7.683679997308695,
+      "latency_breakdown_ms": {
+        "query_encode_ms": 6.990057999461418,
+        "candidate_selection_ms": 0.5848085172226479,
+        "rerank_ms": 0.10523194886984405
+      }
+    }
+  }
+}

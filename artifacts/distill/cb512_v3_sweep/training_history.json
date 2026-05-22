@@ -1,0 +1,61 @@
+{
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.003152983382389676,
+      "distillation_loss": 0.0017911764226840867,
+      "quantization_loss": 0.1361806996763791,
+      "alpha_end_of_epoch": 2.1215686274509804
+    },
+    {
+      "epoch": 2,
+      "loss": 0.0019018110459774265,
+      "distillation_loss": 0.0013263247207858525,
+      "quantization_loss": 0.05754863347481767,
+      "alpha_end_of_epoch": 3.2470588235294118
+    },
+    {
+      "epoch": 3,
+      "loss": 0.001737397641530877,
+      "distillation_loss": 0.0013456326347162447,
+      "quantization_loss": 0.03917650171013659,
+      "alpha_end_of_epoch": 4.372549019607844
+    },
+    {
+      "epoch": 4,
+      "loss": 0.0016713567237931107,
+      "distillation_loss": 0.001375497447388435,
+      "quantization_loss": 0.029585928062321,
+      "alpha_end_of_epoch": 5.4980392156862745
+    },
+    {
+      "epoch": 5,
+      "loss": 0.0016479173793622944,
+      "distillation_loss": 0.001412185606666766,
+      "quantization_loss": 0.02357317788286284,
+      "alpha_end_of_epoch": 6.623529411764705
+    },
+    {
+      "epoch": 6,
+      "loss": 0.0016333854210462408,
+      "distillation_loss": 0.0014410343524944751,
+      "quantization_loss": 0.01923510704176559,
+      "alpha_end_of_epoch": 7.749019607843137
+    },
+    {
+      "epoch": 7,
+      "loss": 0.0016245103022570395,
+      "distillation_loss": 0.0014626667242601046,
+      "quantization_loss": 0.016184357754263107,
+      "alpha_end_of_epoch": 8.874509803921569
+    },
+    {
+      "epoch": 8,
+      "loss": 0.001623624656673923,
+      "distillation_loss": 0.0014843769304175255,
+      "quantization_loss": 0.013924772659712552,
+      "alpha_end_of_epoch": 10.0
+    }
+  ],
+  "train_time_s": 13.7
+}

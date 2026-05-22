@@ -1,0 +1,272 @@
+{
+  "args": {
+    "data_dir": "data/real_300k",
+    "output_dir": "artifacts/hash_arch_grid_cb256",
+    "code_bits": 256,
+    "device": null,
+    "epochs": 8,
+    "batch_size": 128,
+    "quantization_weight": 0.01,
+    "learning_rate": 0.001,
+    "top_k": 10,
+    "oversample": 20,
+    "seed": 17
+  },
+  "results": [
+    {
+      "name": "linear",
+      "hidden_dims": [],
+      "use_layer_norm": false,
+      "activation": "gelu",
+      "dropout": 0.0,
+      "param_count": 98560,
+      "train_time_s": 10.3,
+      "final_loss": 0.004696472035234191,
+      "final_distill_loss": 0.002334016760590548,
+      "binary_only": {
+        "recall@k": 0.7091855041263005,
+        "ndcg@k": 0.38749259330285657,
+        "map@k": 0.28025380735956623,
+        "latency_ms": 7.4557776237892055
+      },
+      "rerank": {
+        "recall@k": 0.8137334050950844,
+        "ndcg@k": 0.45510313948812925,
+        "map@k": 0.3340882199668529,
+        "latency_ms": 6.927440259957369
+      }
+    },
+    {
+      "name": "1h_no_ln",
+      "hidden_dims": [
+        256
+      ],
+      "use_layer_norm": false,
+      "activation": "gelu",
+      "dropout": 0.0,
+      "param_count": 164352,
+      "train_time_s": 11.5,
+      "final_loss": 0.0050304359107404845,
+      "final_distill_loss": 0.002929940614492376,
+      "binary_only": {
+        "recall@k": 0.6647380696088986,
+        "ndcg@k": 0.362237502888117,
+        "map@k": 0.26142880636287524,
+        "latency_ms": 6.631234097954543
+      },
+      "rerank": {
+        "recall@k": 0.803238249013276,
+        "ndcg@k": 0.4498602758342391,
+        "map@k": 0.330529392417175,
+        "latency_ms": 6.993170507535129
+      }
+    },
+    {
+      "name": "1h_with_ln",
+      "hidden_dims": [
+        256
+      ],
+      "use_layer_norm": true,
+      "activation": "gelu",
+      "dropout": 0.0,
+      "param_count": 164864,
+      "train_time_s": 14.1,
+      "final_loss": 0.002469066675681011,
+      "final_distill_loss": 0.0015700121194396803,
+      "binary_only": {
+        "recall@k": 0.7826515966989593,
+        "ndcg@k": 0.4312199497756013,
+        "map@k": 0.31367018640969124,
+        "latency_ms": 6.8879219407975665
+      },
+      "rerank": {
+        "recall@k": 0.8371456763545031,
+        "ndcg@k": 0.4654202191120388,
+        "map@k": 0.34037847916346303,
+        "latency_ms": 7.281674321851203
+      }
+    },
+    {
+      "name": "2h_no_ln_no_drop",
+      "hidden_dims": [
+        256,
+        128
+      ],
+      "use_layer_norm": false,
+      "activation": "gelu",
+      "dropout": 0.0,
+      "param_count": 164480,
+      "train_time_s": 14.0,
+      "final_loss": 0.005878072467272394,
+      "final_distill_loss": 0.0034554253465362956,
+      "binary_only": {
+        "recall@k": 0.6017222820236814,
+        "ndcg@k": 0.32348573751663245,
+        "map@k": 0.2311470560595964,
+        "latency_ms": 6.606163463402665
+      },
+      "rerank": {
+        "recall@k": 0.7762378902045209,
+        "ndcg@k": 0.4362339755492894,
+        "map@k": 0.321167901139645,
+        "latency_ms": 6.982099438106075
+      }
+    },
+    {
+      "name": "2h_no_drop",
+      "hidden_dims": [
+        256,
+        128
+      ],
+      "use_layer_norm": true,
+      "activation": "gelu",
+      "dropout": 0.0,
+      "param_count": 165248,
+      "train_time_s": 16.6,
+      "final_loss": 0.0030388621733449268,
+      "final_distill_loss": 0.0018796900807286025,
+      "binary_only": {
+        "recall@k": 0.7575798349479728,
+        "ndcg@k": 0.4183105398540174,
+        "map@k": 0.30463995250055526,
+        "latency_ms": 6.993034181914799
+      },
+      "rerank": {
+        "recall@k": 0.8328399712952996,
+        "ndcg@k": 0.46353724200864405,
+        "map@k": 0.3392326404907137,
+        "latency_ms": 7.594708388052183
+      }
+    },
+    {
+      "name": "2h_default",
+      "hidden_dims": [
+        256,
+        128
+      ],
+      "use_layer_norm": true,
+      "activation": "gelu",
+      "dropout": 0.1,
+      "param_count": 165248,
+      "train_time_s": 16.6,
+      "final_loss": 0.004087297430826605,
+      "final_distill_loss": 0.0028351760909078117,
+      "binary_only": {
+        "recall@k": 0.7458288482238966,
+        "ndcg@k": 0.40917072575937863,
+        "map@k": 0.2965464657337639,
+        "latency_ms": 7.004970627557004
+      },
+      "rerank": {
+        "recall@k": 0.8293415859346969,
+        "ndcg@k": 0.46193181436624986,
+        "map@k": 0.3382034146633177,
+        "latency_ms": 7.491899500000065
+      }
+    },
+    {
+      "name": "3h_deep",
+      "hidden_dims": [
+        512,
+        256,
+        128
+      ],
+      "use_layer_norm": true,
+      "activation": "gelu",
+      "dropout": 0.1,
+      "param_count": 396160,
+      "train_time_s": 19.7,
+      "final_loss": 0.004343348263214482,
+      "final_distill_loss": 0.0029845846807162314,
+      "binary_only": {
+        "recall@k": 0.7345712235378544,
+        "ndcg@k": 0.40032718744436474,
+        "map@k": 0.2890659439233174,
+        "latency_ms": 7.204802316471196
+      },
+      "rerank": {
+        "recall@k": 0.8239594546106925,
+        "ndcg@k": 0.4596848301681699,
+        "map@k": 0.3369243041673074,
+        "latency_ms": 7.536765696447532
+      }
+    },
+    {
+      "name": "2h_relu",
+      "hidden_dims": [
+        256,
+        128
+      ],
+      "use_layer_norm": true,
+      "activation": "relu",
+      "dropout": 0.0,
+      "param_count": 165248,
+      "train_time_s": 16.0,
+      "final_loss": 0.0032466656466757795,
+      "final_distill_loss": 0.0019738797693860553,
+      "binary_only": {
+        "recall@k": 0.7604503049874416,
+        "ndcg@k": 0.41471498786027905,
+        "map@k": 0.29952959745074925,
+        "latency_ms": 6.994075265876475
+      },
+      "rerank": {
+        "recall@k": 0.8323017581628992,
+        "ndcg@k": 0.46293549701871745,
+        "map@k": 0.3386679438549729,
+        "latency_ms": 7.439071800863454
+      }
+    },
+    {
+      "name": "2h_tanh",
+      "hidden_dims": [
+        256,
+        128
+      ],
+      "use_layer_norm": true,
+      "activation": "tanh",
+      "dropout": 0.0,
+      "param_count": 165248,
+      "train_time_s": 16.0,
+      "final_loss": 0.0032858535767458247,
+      "final_distill_loss": 0.001971562491171711,
+      "binary_only": {
+        "recall@k": 0.7541263006817366,
+        "ndcg@k": 0.41414928719966915,
+        "map@k": 0.30049827430075005,
+        "latency_ms": 6.9452396458542855
+      },
+      "rerank": {
+        "recall@k": 0.832032651596699,
+        "ndcg@k": 0.46325843518067833,
+        "map@k": 0.3390995822440925,
+        "latency_ms": 7.488638264800311
+      }
+    },
+    {
+      "name": "1h_wide_768",
+      "hidden_dims": [
+        768
+      ],
+      "use_layer_norm": true,
+      "activation": "gelu",
+      "dropout": 0.0,
+      "param_count": 494080,
+      "train_time_s": 13.4,
+      "final_loss": 0.0022190082161151884,
+      "final_distill_loss": 0.0014947690029112615,
+      "binary_only": {
+        "recall@k": 0.7980355220667384,
+        "ndcg@k": 0.43839748939999473,
+        "map@k": 0.31827749728045746,
+        "latency_ms": 6.929899776103358
+      },
+      "rerank": {
+        "recall@k": 0.8366074632221027,
+        "ndcg@k": 0.4652666106380628,
+        "map@k": 0.3403425982879697,
+        "latency_ms": 7.307624510226831
+      }
+    }
+  ]
+}

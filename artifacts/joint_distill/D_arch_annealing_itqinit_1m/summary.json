@@ -1,0 +1,142 @@
+{
+  "args": {
+    "data_dir": "data/real_1m",
+    "output_dir": "artifacts/joint_distill/D_arch_annealing_itqinit_1m",
+    "device": null,
+    "seed": 17,
+    "transformer_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "code_bits": 256,
+    "epochs": 3,
+    "batch_size": 128,
+    "encoder_lr": 5e-06,
+    "hash_lr": 0.001,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.1,
+    "quantization_weight": 0.01,
+    "distillation_weight": 1.0,
+    "temperature": 1.0,
+    "temperature_end": 10.0,
+    "hidden_dims": "768",
+    "activation": "gelu",
+    "dropout": 0.0,
+    "no_layer_norm": false,
+    "itq_init": true,
+    "itq_iter": 50,
+    "gradient_clip_norm": 1.0,
+    "max_seq_length": 128,
+    "mixed_precision": false,
+    "num_workers": 0,
+    "log_every_n_steps": 50,
+    "eval_every_n_epochs": 1,
+    "save_every_n_epochs": 1,
+    "top_k": 10,
+    "oversample": 20,
+    "skip_final_baselines": true
+  },
+  "device": "mps",
+  "training": {
+    "config": {
+      "epochs": 3,
+      "batch_size": 128,
+      "encoder_lr": 5e-06,
+      "hash_lr": 0.001,
+      "weight_decay": 0.01,
+      "warmup_ratio": 0.1,
+      "margin": 0.0,
+      "quantization_weight": 0.01,
+      "temperature": 1.0,
+      "temperature_end": 10.0,
+      "gradient_clip_norm": 1.0,
+      "max_seq_length": 128,
+      "mixed_precision": false,
+      "seed": 17,
+      "log_every_n_steps": 50,
+      "eval_every_n_epochs": 1,
+      "save_every_n_epochs": 1,
+      "num_workers": 0,
+      "pin_memory": false
+    },
+    "epochs_history": [
+      {
+        "epoch": 1,
+        "loss": 0.0032979835993148855,
+        "distillation_loss": 0.0022665508286524062,
+        "quantization_loss": 0.10314327981155198,
+        "alpha_end_of_epoch": 3.9981976569540403,
+        "elapsed_s": 1226.5
+      },
+      {
+        "epoch": 2,
+        "loss": 0.002622454297762398,
+        "distillation_loss": 0.002078630209812341,
+        "quantization_loss": 0.05438240975611382,
+        "alpha_end_of_epoch": 6.99909882847702,
+        "elapsed_s": 3035.3
+      },
+      {
+        "epoch": 3,
+        "loss": 0.0024744254780245255,
+        "distillation_loss": 0.00197459699005006,
+        "quantization_loss": 0.049982849917970265,
+        "alpha_end_of_epoch": 10.0,
+        "elapsed_s": 2675.7
+      }
+    ],
+    "eval_history": [
+      {
+        "queries": 3519,
+        "recall@k": 0.7874869754665152,
+        "map@k": 0.30940612825914177,
+        "ndcg@k": 0.4294863285827164,
+        "latency_ms": 8.095432791418698,
+        "latency_breakdown_ms": {
+          "query_encode_ms": 7.10977584682998,
+          "candidate_selection_ms": 0.8479633932939974,
+          "rerank_ms": 0.1338211537383549
+        },
+        "epoch": 1
+      },
+      {
+        "queries": 3519,
+        "recall@k": 0.7859713933882733,
+        "map@k": 0.30932249308741316,
+        "ndcg@k": 0.42907110616035055,
+        "latency_ms": 7.896996304919671,
+        "latency_breakdown_ms": {
+          "query_encode_ms": 6.766201208296871,
+          "candidate_selection_ms": 0.8556177422668503,
+          "rerank_ms": 0.2711967300298911
+        },
+        "epoch": 2
+      },
+      {
+        "queries": 3519,
+        "recall@k": 0.7862555650279436,
+        "map@k": 0.3093360250702547,
+        "ndcg@k": 0.42916358179872754,
+        "latency_ms": 7.741569566641394,
+        "latency_breakdown_ms": {
+          "query_encode_ms": 6.756304791137819,
+          "candidate_selection_ms": 0.8552525234217546,
+          "rerank_ms": 0.12609487580038684
+        },
+        "epoch": 3
+      }
+    ],
+    "train_time_s": 7873.6
+  },
+  "models": {
+    "hybrid_joint_distill": {
+      "queries": 3518,
+      "recall@k": 0.7887341292400986,
+      "map@k": 0.3069996687481777,
+      "ndcg@k": 0.42793837104008986,
+      "latency_ms": 7.793883261521765,
+      "latency_breakdown_ms": {
+        "query_encode_ms": 6.807912056275195,
+        "candidate_selection_ms": 0.8403138129481028,
+        "rerank_ms": 0.14173421548299284
+      }
+    }
+  }
+}

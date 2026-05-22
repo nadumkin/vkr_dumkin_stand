@@ -1,0 +1,70 @@
+{
+  "epochs": [
+    {
+      "epoch": 1,
+      "loss": 0.005142348005601857,
+      "distillation_loss": 0.0032571245525162083,
+      "quantization_loss": 0.18852234891378922,
+      "alpha_end_of_epoch": 3.9930232558139536,
+      "elapsed_s": 317.0
+    },
+    {
+      "epoch": 2,
+      "loss": 0.0029283640403235623,
+      "distillation_loss": 0.0022699395803092146,
+      "quantization_loss": 0.0658424464330233,
+      "alpha_end_of_epoch": 6.996511627906977,
+      "elapsed_s": 2198.2
+    },
+    {
+      "epoch": 3,
+      "loss": 0.0027488590906072368,
+      "distillation_loss": 0.0022077176773446883,
+      "quantization_loss": 0.05411414199797534,
+      "alpha_end_of_epoch": 10.0,
+      "elapsed_s": 1315.6
+    }
+  ],
+  "eval": [
+    {
+      "queries": 1857,
+      "recall@k": 0.8563274098007541,
+      "map@k": 0.3514900718858717,
+      "ndcg@k": 0.4784434418322543,
+      "latency_ms": 7.729325462036818,
+      "latency_breakdown_ms": {
+        "query_encode_ms": 6.8572642843294656,
+        "candidate_selection_ms": 0.744826673668233,
+        "rerank_ms": 0.12332955088847417
+      },
+      "epoch": 1
+    },
+    {
+      "queries": 1857,
+      "recall@k": 0.8584814216478193,
+      "map@k": 0.3522639562017592,
+      "ndcg@k": 0.4795322989708685,
+      "latency_ms": 7.418263128703698,
+      "latency_breakdown_ms": {
+        "query_encode_ms": 6.573849392029968,
+        "candidate_selection_ms": 0.7337245810471531,
+        "rerank_ms": 0.10711703661373995
+      },
+      "epoch": 2
+    },
+    {
+      "queries": 1857,
+      "recall@k": 0.8571351642434035,
+      "map@k": 0.3518712977921379,
+      "ndcg@k": 0.47891864046967464,
+      "latency_ms": 7.557305705432399,
+      "latency_breakdown_ms": {
+        "query_encode_ms": 6.586028580511373,
+        "candidate_selection_ms": 0.743558024773159,
+        "rerank_ms": 0.22388010446866882
+      },
+      "epoch": 3
+    }
+  ],
+  "train_time_s": 4153.1
+}

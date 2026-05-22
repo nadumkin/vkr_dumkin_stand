@@ -1,0 +1,93 @@
+{
+  "row": {
+    "code_bits": 128,
+    "margin": 12.8,
+    "margin_relative": 0.1,
+    "quantization_weight": 0.1,
+    "learning_rate": 0.001,
+    "epochs": 10,
+    "train_time_s": 22.0,
+    "recall@10": 0.6696716899892358,
+    "ndcg@10": 0.3786692882802101,
+    "map@10": 0.2797972516957978,
+    "latency_ms": 8.219565763724473,
+    "delta_recall_vs_untrained": -0.09732687477574453,
+    "final_loss": 0.8337943309898576,
+    "final_triplet_loss": 0.8227390366045024,
+    "final_quantization_loss": 0.11055293894707117
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 3.725635091602179,
+      "triplet_loss": 3.700436965513728,
+      "quantization_loss": 0.2519812029932434
+    },
+    {
+      "epoch": 2,
+      "loss": 2.3032903247594003,
+      "triplet_loss": 2.2859086944666474,
+      "quantization_loss": 0.17381629166079732
+    },
+    {
+      "epoch": 3,
+      "loss": 1.8651903473126348,
+      "triplet_loss": 1.8499043116586134,
+      "quantization_loss": 0.1528603310992078
+    },
+    {
+      "epoch": 4,
+      "loss": 1.6027560873729427,
+      "triplet_loss": 1.5887273967473765,
+      "quantization_loss": 0.14028693003521564
+    },
+    {
+      "epoch": 5,
+      "loss": 1.3645462786279074,
+      "triplet_loss": 1.351324313609027,
+      "quantization_loss": 0.1322196503705264
+    },
+    {
+      "epoch": 6,
+      "loss": 1.2198462611914511,
+      "triplet_loss": 1.2073127275352278,
+      "quantization_loss": 0.12533532947509546
+    },
+    {
+      "epoch": 7,
+      "loss": 1.100296463700537,
+      "triplet_loss": 1.0882398581670967,
+      "quantization_loss": 0.12056605364698982
+    },
+    {
+      "epoch": 8,
+      "loss": 0.9848029182555368,
+      "triplet_loss": 0.973107435562054,
+      "quantization_loss": 0.11695480232454758
+    },
+    {
+      "epoch": 9,
+      "loss": 0.8998383343842802,
+      "triplet_loss": 0.8885194857569106,
+      "quantization_loss": 0.11318846926975748
+    },
+    {
+      "epoch": 10,
+      "loss": 0.8337943309898576,
+      "triplet_loss": 0.8227390366045024,
+      "quantization_loss": 0.11055293894707117
+    }
+  ],
+  "test": {
+    "queries": 1858,
+    "recall@k": 0.6696716899892358,
+    "map@k": 0.2797972516957978,
+    "ndcg@k": 0.3786692882802101,
+    "latency_ms": 8.219565763724473,
+    "latency_breakdown_ms": {
+      "query_encode_ms": 7.472865054359701,
+      "candidate_selection_ms": 0.5644365139937378,
+      "rerank_ms": 0.1760337529603469
+    }
+  }
+}
