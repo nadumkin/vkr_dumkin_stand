@@ -1,0 +1,35 @@
+{
+  "datasets": {
+    "allnli": {
+      "train": 200000,
+      "validation": 20000,
+      "test": 10000
+    },
+    "stsb": {
+      "train": 5749,
+      "validation": 1500,
+      "test": 1379
+    },
+    "qqp": {
+      "train": 200000,
+      "validation": 20000,
+      "test": 20000
+    }
+  },
+  "corpus_size": 645893,
+  "train_triplets": 142003,
+  "evaluation_pool_queries": 7037,
+  "val_queries": 3519,
+  "test_queries": 3518,
+  "split_strategy": {
+    "type": "holdout_eval_pool",
+    "holdout_fraction": 0.5,
+    "seed": 18
+  },
+  "files": {
+    "corpus": "data/real_1m/corpus.jsonl",
+    "train_triplets": "data/real_1m/train_triplets.jsonl",
+    "val_queries": "data/real_1m/val_queries.jsonl",
+    "test_queries": "data/real_1m/test_queries.jsonl"
+  }
+}

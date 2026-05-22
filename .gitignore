@@ -40,7 +40,7 @@ coverage.xml
 .nox/
 
 # --- Эксперименты и большие данные (регенерируются) --------------------------
-data/
+data/**
 artifacts/**
 checkpoints/
 logs/
@@ -189,3 +189,7 @@ core.*
 !artifacts/hash_grid/cb128/summary.json
 !artifacts/hash_grid/cb128/m*.json
 !artifacts/sweep/block2_efsearch/ef*_test.json
+
+# ── Датасеты ──────────
+!data/real_1m/dataset_summary.json
+!data/real_300k/dataset_summary.json
